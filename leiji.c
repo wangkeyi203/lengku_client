@@ -93,10 +93,8 @@ int write_block_m1(int secter,int block,unsigned char *buf)
 		}
 	else{
 			buzz_on();
-			usleep(100000);
 			buzz_off();
 			buzz_on();
-			usleep(100000);
 			buzz_off();
 			return -1;
 		}
@@ -147,10 +145,8 @@ int read_block_m1(int secter,int block,unsigned char *buf)				//do not need to v
 	else 
 	{
 		buzz_on();
-		usleep(100000);
 		buzz_off();
 		buzz_on();
-		usleep(100000);
 		buzz_off();
 		return -1;
 	}
@@ -348,7 +344,7 @@ int readNum()
 
     printf("Reading...\n");  
     while(1) {  
-        res = read(fd, buf, 255); 
+        res = read(fd, buf, 100); 
         break; 
     }  
 
@@ -586,12 +582,11 @@ int leiji()
 					{
 						Clear_Display();
 						TextOut(50,90,"刷卡过于频繁",GB2312_32);
-						usleep(500000);
+						usleep(300000);
 						continue;
 					}
 					else
 						i=0;
-
 				}
 
 				for(i=0;i<3;i++)
@@ -638,6 +633,15 @@ int leiji()
 					maoliaohebanchengpin[21+i]=shijianchuo[i];
 				}
 				maoliaohebanchengpin[30]='\0';
+				if(strlen(maoliaohebanchengpin)!=29)
+				{
+					Clear_Display();
+					TextOut(70,50,"刷卡失败",GB2312_32);
+					TextOut(20,90,"请重新刷卡",GB2312_32);
+					usleep(5000);
+					continue;
+
+				}
 				FILE *fp=fopen(savePath,"ab+");
 				fprintf(fp,"%s\n",maoliaohebanchengpin);
 				fclose(fp);
@@ -655,7 +659,7 @@ int leiji()
 
 
 				TextOut(70,50,"刷卡成功",GB2312_32); 
-				sleep(1);
+				usleep(3000);
 			}
 		}
 	}
@@ -797,7 +801,6 @@ int main()
     Clear_Display();
 	
 	TextOut(70,50,"累计模式",GB2312_32);
-//	TextOut(70,90,"成品模式",GB2312_32);
 	TextOut(70,130,"卡模式",GB2312_32);
 	int Loop=1;
 	int ret;
@@ -836,7 +839,6 @@ int main()
 	if(1==ret)
 	{
 		leiji();
-	
 	}
 //	if(2==ret)
 //	{
