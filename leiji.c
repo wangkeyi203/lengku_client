@@ -34,7 +34,7 @@
 #include "include/psam.h"
 #include "include/display.h"
 #include "include/keyboard.h"
-
+int beep_fd;
 char servInetAddr[20] ={0};
 char  buf[255];  
 char *path="/mnt/nand1-2/app/lengku.ini";
@@ -59,7 +59,6 @@ char banchengpinweight[6];
 int cardok=0;
 int pinzhongmode=0;
 
-
 int write_block_m1(int secter,int block,unsigned char *buf)
 {
 	unsigned char len;	
@@ -81,7 +80,7 @@ int write_block_m1(int secter,int block,unsigned char *buf)
 
 			ret=Get_KeyCode();
 			if(ret==4)
-				return 0;
+				return -1;
 			if((ret=CardReset(csn,&csnLen))== 0x08)
 				break;
 	}
@@ -92,9 +91,6 @@ int write_block_m1(int secter,int block,unsigned char *buf)
 			return 0;
 		}
 	else{
-			buzz_on();
-			buzz_off();
-			buzz_on();
 			buzz_off();
 			return -1;
 		}
@@ -128,7 +124,7 @@ int read_block_m1(int secter,int block,unsigned char *buf)				//do not need to v
 
 		ret=Get_KeyCode();
 		if(ret==4)
-			return 0;
+			return -1;
 		if((ret=CardReset(csn,&csnLen))== 0x08)
 		{
 			break;
@@ -144,9 +140,6 @@ int read_block_m1(int secter,int block,unsigned char *buf)				//do not need to v
 	}
 	else 
 	{
-		buzz_on();
-		buzz_off();
-		buzz_on();
 		buzz_off();
 		return -1;
 	}
@@ -324,34 +317,32 @@ int set_Parity(int fd,int databits,int stopbits,int parity)
 ////////////////////////////////////////////////////////////////////////////////  
 int readNum()
 {
-    int fd2;
-    int fd, c=0, res;  
-    int i=0;
-    printf("Start...\n");  
-    fd = open(UART_DEVICE, O_RDWR);  
+	int fd, c=0, res;  
+	int i=0;
+	fd = open(UART_DEVICE, O_RDWR);  
 
-    if (fd < 0) {  
-        perror(UART_DEVICE);  
-        exit(1);  
-    }  
 
-    printf("Open...\n");  
-    set_speed(fd,9600);  
-    if (set_Parity(fd,7,1,'O') == FALSE)  {  
-        printf("Set Parity Error\n");  
-        exit (0);  
-    }  
+		if (fd < 0) {  
+			return -1;
+		}  
 
-    printf("Reading...\n");  
-    while(1) {  
-        res = read(fd, buf, 100); 
-        break; 
-    }  
 
-    printf("Close...\n");  
-    close(fd);  
+		printf("Open...\n");  
+		set_speed(fd,9600);  
+		while (set_Parity(fd,7,1,'O') == FALSE)  {  
+			printf("Set Parity Error\n");  
+		}  
 
-    return 0;  
+	printf("Reading...\n");  
+	while(1) {  
+		res = read(fd, buf, 100); 
+		break; 
+	}  
+
+	printf("Close...\n");  
+	close(fd);  
+
+	return 0;  
 }  
 
 int display_char()
@@ -382,90 +373,6 @@ int display_char()
 
 }
 
-int maoliao()
-{
-    char *p;
-    char *p2=" ";
-    int i=0;
-    int j=0;
-    unsigned char flag[16]="on";
-    unsigned char maoliaoweight[16]={0};
-    char isflag[16]={0};
-    
-
-    while(1)
-    {
-        memset(cardId,0,sizeof(char)*50);
-        memset(buf,0,sizeof(char)*255);
-
-	Clear_Display();
-	TextOut(25,20,"品种:",GB2312_32);
-	TextOut(95,20,cardmode,GB2312_32);
-	TextOut(90,90,"请刷卡",GB2312_32);
-	TextOut(175,20,"工号:",GB2312_32);
-	TextOut(255,20,currentWorkId,GB2312_32);
-
-
-	
-        if(1==verify_kind())
-        {
-            printf("\n this is pinzhongka\n");
-
-            //品种卡
-        }
-        else
-        {
-            memset(currentWorkId,0,sizeof(char)*50);
-	     read_block_m1(0,1,currentWorkId);
-            printf("\n this is gongka\n");
-            //工卡
-            while(1)
-            {
-                readNum(); 
-                p=strstr(buf,p2);
-                //char test2[16]=" 000020";
-                //p=strstr(test2,p2);
-                printf("\n %s\n",p);
-                if((p!=NULL)&&(strlen(p)>6))
-                {
-                    p++;
-                    for(j=0;j<6;j++)
-                    {
-                        maoliaoweight[j]=*(p+j);   
-                    }
-                    maoliaoweight[6]=',';
-                    maoliaoweight[7]=cardmode[0];
-                    maoliaoweight[8]=cardmode[1];
-             //   int ttt=0;
-             //   printf("\n=================================\n");
-             //   for(ttt;ttt<16;ttt++)
-              //  {
-            //        printf("%c ",maoliaoweight[ttt]);
-              //  }
-            //    printf("\n=================================\n");
-                    if(0 == write_block_m1(1,0,maoliaoweight))
-                    {
-                        if(0==write_block_m1(1,1,flag))
-                        {
-                            //显示刷卡成功
-                            printf("\n write success----------\n");
-                          //  TextOut(70,50,"刷卡成功",GB2312_32);
-				Clear_Display();
-			   	TextOut(70,50,"刷卡成功",GB2312_32); 
-				sleep(1);
-                        }
-                    }//前六位重量+","两位品种 1扇0块
-
-                    break;	
-                }
-            }
-        }
-
-    }
-
-}
-
-
 
 int leiji()
 {
@@ -478,7 +385,7 @@ int leiji()
     char now_work[16]={0};
     char now_time[12]={0};
     char last_time[12]={0};
-    
+    int res;
     pid_t pid;
     pid=fork();
     if(0 == pid)
@@ -508,8 +415,6 @@ int leiji()
                 memset(recvbuf,0,sizeof(char)*32);
                 FILE *fp=fopen(savePath,"ab+");
                 fgets(buf1,32,fp);
-                printf("--------line 583 get line %s\n",buf1);
-                printf("--------line 584 get line long  %d\n",strlen(buf1));
                 fclose(fp);  
                 if(strlen(buf1)==30)
                 {
@@ -541,6 +446,7 @@ int leiji()
 	}
 	else
 	{
+
 		while(1)
 		{
 			//先清空，显示请刷卡
@@ -554,6 +460,7 @@ int leiji()
 			if(1==verify_kind())
 			{
 				printf("\n this is pinzhongka\n");
+				memset(last_work,0,sizeof(char)*16);
 				//品种卡
 			}
 			else
@@ -562,7 +469,6 @@ int leiji()
 				memset(buf,0,sizeof(char)*255);
 				memset(maoliaohebanchengpin,0,sizeof(char)*255);
 				memset(workid,0,sizeof(char)*16);
-				while(read_block_m1(0,1,workid)!=0);
 				while(read_block_m1(0,0,now_work)!=0);
 
 				for(i=0;i<16;i++)
@@ -581,7 +487,7 @@ int leiji()
 					if(now_time-last_time<60)
 					{
 						Clear_Display();
-						TextOut(50,90,"刷卡过于频繁",GB2312_32);
+						TextOut(50,90,"已经成功刷卡",GB2312_32);
 						usleep(300000);
 						continue;
 					}
@@ -589,6 +495,7 @@ int leiji()
 						i=0;
 				}
 
+				while(read_block_m1(0,1,workid)!=0);
 				for(i=0;i<3;i++)
 				{
 					maoliaohebanchengpin[i]=workid[i];
@@ -605,10 +512,11 @@ int leiji()
 
 				while(1)
 				{
-					//readNum(); 
+					while(readNum()!=0); 
+					p=strstr(buf,p2);
 					//p=strstr(buf,p2);
-					  char test2[16]=" 000015123";
-					   p=strstr(test2,p2);
+					//char test2[16]=" 00001531";
+					//p=strstr(test2,p2);
 					if((p!=NULL)&&(strlen(p)>7))
 					{
 						p++;
@@ -626,6 +534,7 @@ int leiji()
 						break;
 					}
 				}
+				maoliaohebanchengpin[19]='0';
 				maoliaohebanchengpin[20]=',';
 				shijianchuofunction();
 				for(i=0;i<8;i++)
@@ -643,11 +552,14 @@ int leiji()
 
 				}
 				FILE *fp=fopen(savePath,"ab+");
-				fprintf(fp,"%s\n",maoliaohebanchengpin);
+				while(fprintf(fp,"%s\n",maoliaohebanchengpin)!=30);
 				fclose(fp);
 				sync();
 				Clear_Display();
-
+				buzz_on();
+				TextOut(70,50,"刷卡成功",GB2312_32); 
+				TextOut(50,90,"工号:",GB2312_32);
+				TextOut(130,90,workid,GB2312_32);
 				for(i=0;i<16;i++)
 				{
 					last_work[i]=now_work[i];
@@ -656,10 +568,8 @@ int leiji()
 				{
 					last_time[i]=now_time[i];
 				}
-
-
-				TextOut(70,50,"刷卡成功",GB2312_32); 
-				usleep(3000);
+				usleep(250000);
+				buzz_off();
 			}
 		}
 	}
@@ -760,14 +670,28 @@ int zhika()
     }
 }
 
+unsigned char InitSystem(void)
+{
+	//开启蜂鸣器
+	beep_fd=open("/dev/beep",O_RDWR);
+	 if(beep_fd<0)
+	 {
+		 close(beep_fd);
+		 printf("Can't open /dev/beepgpio\n");
+		 return -2;
+	 }
+}  
 int main()
 {
-       FILE *fd;
+	
+    FILE *fd;
 	if(Init_MF("/dev/typea")!=MI_OK)
 	{
 		exit(1);
 	}
 
+	InitSystem(); 
+	signal(SIGPIPE, SIG_IGN);  //关闭SIGPIPE信号，防死机
 	fd=fopen(path,"r");
 	fgets(servInetAddr,20,fd);
 	close(fd);
@@ -777,12 +701,13 @@ int main()
     }
     printf("ip is %s\n",servInetAddr);
 
+  
 	if(Open_Frambuffer( "/dev/fb0")==0)
 	{
 		//Init_Hzk();
 		//Set_Font_Color(Color_white);
 	
-		Set_Background(NULL,Color_blue,0);
+		Set_Background(NULL,Color_yellow,0);
 		
 		if(Insert_Hzk("/mnt/nand1-2/app/font/hzk16c_ASC.DZK",GB2312_16,HZK_MIXUER)==0)
 			printf("加载字库 16 成功\n");
@@ -799,7 +724,6 @@ int main()
 	TextOut(30,90,"系统初始化",GB2312_32);
 
     Clear_Display();
-	
 	TextOut(70,50,"累计模式",GB2312_32);
 	TextOut(70,130,"卡模式",GB2312_32);
 	int Loop=1;

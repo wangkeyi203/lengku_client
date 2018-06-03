@@ -41,7 +41,7 @@ char *path="/mnt/nand1-2/app/lengku.ini";
 char *savePath="/mnt/nand1-2/app/backup.txt";
 char src[10];
 char cardId[50];
-char currentWorkId[50]={0};
+char currentWorkId[16]={0};
 char cardmode[10]="00";
 char recvbuf[32];
 char dangqiancardid[50];
@@ -337,16 +337,14 @@ int readNum()
     printf("Start...\n");  
     fd = open(UART_DEVICE, O_RDWR);  
 
-    if (fd < 0) {  
-        perror(UART_DEVICE);  
-        exit(1);  
+    if(fd < 0) {  
+		return -1;
     }  
 
     printf("Open...\n");  
     set_speed(fd,9600);  
-    if (set_Parity(fd,7,1,'O') == FALSE)  {  
+    while (set_Parity(fd,7,1,'O') == FALSE)  {  
         printf("Set Parity Error\n");  
-        exit (0);  
     }  
 
     printf("Reading...\n");  
@@ -396,9 +394,9 @@ int maoliao()
     int i=0;
     int j=0;
     unsigned char flag[16]="on";
-    unsigned char maoliaoweight[16]={0};
-    char isflag[16]={0};
-    
+	unsigned char maoliaoweight[16]={0};
+	char isflag[16]={0};
+
 
 	while(1)
 	{
@@ -409,8 +407,8 @@ int maoliao()
 		TextOut(25,20,"品种:",GB2312_32);
 		TextOut(95,20,cardmode,GB2312_32);
 		TextOut(90,90,"请刷卡",GB2312_32);
-		TextOut(175,20,"工号:",GB2312_32);
-		TextOut(255,20,currentWorkId,GB2312_32);
+	//	TextOut(175,20,"工号:",GB2312_32);
+	//	TextOut(255,20,currentWorkId,GB2312_32);
 
 
 
@@ -421,13 +419,13 @@ int maoliao()
 		}
 		else
 		{
-			memset(currentWorkId,0,sizeof(char)*50);
+			memset(currentWorkId,0,sizeof(char)*16);
 			while(0 != read_block_m1(0,1,currentWorkId));
 			printf("\n this is gongka\n");
 			//工卡
 			while(1)
 			{
-				readNum(); 
+				while(readNum()!=0); 
 				p=strstr(buf,p2);
 				//char test2[16]=" 000020";
 				//p=strstr(test2,p2);
@@ -448,36 +446,32 @@ int maoliao()
 					maoliaoweight[6]=',';
 					maoliaoweight[7]=cardmode[0];
 					maoliaoweight[8]=cardmode[1];
-					//   int ttt=0;
-					//   printf("\n=================================\n");
-					//   for(ttt;ttt<16;ttt++)
-					//  {
-					//        printf("%c ",maoliaoweight[ttt]);
-					//  }
-					//    printf("\n=================================\n");
-					
 
-//					if(0 == write_block_m1(1,0,maoliaoweight))
-//					{
-//						if(0==write_block_m1(1,1,flag))
-//						{
-//							//显示刷卡成功
-//							printf("\n write success----------\n");
-//							//  TextOut(70,50,"刷卡成功",GB2312_32);
-//							Clear_Display();
-//							TextOut(70,50,"刷卡成功",GB2312_32); 
-//							sleep(1);
-//						}
-//					}//前六位重量+","两位品种 1扇0块
 
-					break;	
+					if(0 == write_block_m1(1,0,maoliaoweight))
+					{
+						if(0==write_block_m1(1,1,flag))
+						{
+							//显示刷卡成功
+							printf("\n write success----------\n");
+							//  TextOut(70,50,"刷卡成功",GB2312_32);
+							Clear_Display();
+							TextOut(70,50,"刷卡成功",GB2312_32); 
+							TextOut(50,90,"工号:",GB2312_32);
+							TextOut(130,90,currentWorkId,GB2312_32);
+
+							usleep(750000);
+							break;
+						}
+					}//前六位重量+","两位品种 1扇0块
+
 				}
-				while(0 != write_block_m1(1,0,maoliaoweight));
-				while(0 != write_block_m1(1,1,flag));
-				Clear_Display();
-				TextOut(70,50,"刷卡成功",GB2312_32); 
-				usleep(10000);
-
+			//	while(0 != write_block_m1(1,0,maoliaoweight));
+			//	while(0 != write_block_m1(1,1,flag));
+			//	Clear_Display();
+			//	TextOut(70,50,"刷卡成功",GB2312_32); 
+			//	usleep(30000);
+			//	break;	
 			}
 		}
 	}
@@ -589,7 +583,7 @@ int banchengpin()
 				maoliaohebanchengpin[13]=',';
 				while(1)
 				{
-					readNum(); 
+					while(readNum()!=0); 
 					p=strstr(buf,p2);
 					//char test2[16]=" 000015";
 					//p=strstr(test2,p2);
@@ -620,27 +614,29 @@ int banchengpin()
 					Clear_Display();
 					TextOut(70,50,"刷卡失败",GB2312_32);
 					TextOut(20,90,"请重新刷卡",GB2312_32);
-					usleep(5000);
+					usleep(600000);
 					continue;
 
 				}
 				printf("\n  %s \n",maoliaohebanchengpin);
                 FILE *fp=fopen(savePath,"ab+");
-                fprintf(fp,"%s\n",maoliaohebanchengpin);
+                while(fprintf(fp,"%s\n",maoliaohebanchengpin)!=30);
                 while(0 != write_block_m1(1,0,init));
 				while(0 != write_block_m1(1,1,init));
 				fclose(fp);  
 				sync();
 				Clear_Display();
 				TextOut(70,50,"刷卡成功",GB2312_32); 
-				usleep(5000);
+				TextOut(50,90,"工号:",GB2312_32);
+				TextOut(130,90,workid,GB2312_32);
+				usleep(400000);
 			}
             else
             {
 				Clear_Display();
 				TextOut(70,50,"刷卡失败",GB2312_32);
 				TextOut(20,90,"当前卡没有领料记录",GB2312_32);
-				usleep(50000);
+				usleep(300000);
             }
         }
     }
@@ -764,7 +760,7 @@ int main()
 		//Init_Hzk();
 		//Set_Font_Color(Color_white);
 	
-		Set_Background(NULL,Color_blue,0);
+		Set_Background(NULL,Color_yellow,0);
 		
 		if(Insert_Hzk("/mnt/nand1-2/app/font/hzk16c_ASC.DZK",GB2312_16,HZK_MIXUER)==0)
 			printf("加载字库 16 成功\n");
